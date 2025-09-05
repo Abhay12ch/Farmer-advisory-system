@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>കൃഷിക്കാരന്റെ സഹായി | Farmer Advisory System</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.2/axios.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #2c5530;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .header .subtitle {
+            color: #5a6c57;
+            font-size: 1.1rem;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .chat-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            height: 600px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            height: fit-content;
+        }
+
+        .language-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .lang-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        .lang-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .lang-btn:not(.active) {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .lang-btn:hover:not(.active) {
+            background: #e0e0e0;
+        }
+
+        .messages-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 2px dashed #e0e0e0;
+            border-radius: 12px;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        .message.user {
+            text-align: right;
+        }
+
+        .message.ai {
+            text-align: left;
+        }
+
+        .message-bubble {
+            display: inline-block;
+            max-width: 80%;
+            padding: 15px 20px;
+            border-radius: 20px;
+            font-size: 16px;
+            word-wrap: break-word;
+            position: relative;
+        }
+
+        .message.user .message-bubble {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin-left: auto;
+        }
+
+        .message.ai .message-bubble {
+            background: #f0f8f0;
+            color: #2c5530;
+            border: 2px solid #e0f0e0;
+        }
+
+        .message-time {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .input-container {
+            display: flex;
+            gap: 10px;
+            align-items: stretch;
+        }
+
+        .query-input {
+            flex: 1;
+            padding: 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 25px;
+            font-size: 16px;
+            outline: none;
+            transition: all 0.3s ease;
+            resize: none;
+            min-height: 50px;
+            max-height: 150px;
+        }
+
+        .query-input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .send-btn, .voice-btn {
+            padding: 15px 20px;
+            border: none;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 60px;
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .send-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .voice-btn {
+            background: #ff6b6b;
+            color: white;
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        .voice-btn:hover {
+            background: #ff5252;
+            transform: translateY(-2px);
+        }
+
+        .voice-btn.listening {
+            background: #4CAF50;
+            animation: pulse 1s infinite;
+        }
+
+        .sidebar h3 {
+            color: #2c5530;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+
+        .weather-card, .price-card {
+            background: #f0f8f0;
+            border: 2px solid #e0f0e0;
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .quick-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .quick-btn {
+            padding: 12px;
+            border: 2px solid #667eea;
+            border-radius: 12px;
+            background: white;
+            color: #667eea;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .quick-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #666;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .registration-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2c5530;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 16px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            border-color: #667eea;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+        }
+
+        .btn-primary, .btn-secondary {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .chat-container {
+                height: 500px;
+            }
+            
+            .input-container {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .voice-btn {
+                order: -1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // API Configuration
+        const API_BASE_URL = 'http://localhost:5000/api';
+        const socket = io('http://localhost:5000');
+
+        // Registration Modal Component
+        const RegistrationModal = ({ isOpen, onClose, onRegister }) => {
+            const [formData, setFormData] = useState({
+                name: '',
+                phone: '',
+                location: '',
+                cropType: '',
+                preferredLanguage: 'malayalam'
+            });
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (formData.name && formData.phone && formData.location) {
+                    onRegister(formData);
+                }
+            };
+
+            if (!isOpen) return null;
+
+            return (
+                <div className="registration-modal">
+                    <div className="modal-content">
+                        <h2 style={{ textAlign: 'center', marginBottom: '20px', color: '#2c5530' }}>
+                            കൃഷിക്കാരൻ രജിസ്ട്രേഷൻ | Farmer Registration
+                        </h2>
+                        <form onSubmit={handleSubmit}>
+                            <div className="form-group">
+                                <label>പേര് | Name *</label>
+                                <input
+                                    type="text"
+                                    value={formData.name}
+                                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                                    placeholder="നിങ്ങളുടെ പേര് / Your Name"
+                                    required
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>ഫോൺ നമ്പർ | Phone Number *</label>
+                                <input
+                                    type="tel"
+                                    value={formData.phone}
+                                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                                    placeholder="10-digit mobile number"
+                                    required
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>സ്ഥലം | Location *</label>
+                                <input
+                                    type="text"
+                                    value={formData.location}
+                                    onChange={(e) => setFormData({...formData, location: e.target.value})}
+                                    placeholder="നിങ്ങളുടെ സ്ഥലം / Your Location"
+                                    required
+                                />
+                            </div>
+                            <div className="form-group">
+                                <label>പ്രധാന വിള | Main Crop</label>
+                                <select
+                                    value={formData.cropType}
+                                    onChange={(e) => setFormData({...formData, cropType: e.target.value})}
+                                >
+                                    <option value="">വിള തിരഞ്ഞെടുക്കുക / Select Crop</option>
+                                    <option value="rice">അരി | Rice</option>
+                                    <option value="coconut">തേങ്ങ | Coconut</option>
+                                    <option value="pepper">കുരുമുളക് | Pepper</option>
+                                    <option value="rubber">റബ്ബർ | Rubber</option>
+                                    <option value="cardamom">ഏലം | Cardamom</option>
+                                    <option value="banana">വാഴ | Banana</option>
+                                    <option value="vegetables">പച്ചക്കറികൾ | Vegetables</option>
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label>ഭാഷ | Preferred Language</label>
+                                <select
+                                    value={formData.preferredLanguage}
+                                    onChange={(e) => setFormData({...formData, preferredLanguage: e.target.value})}
+                                >
+                                    <option value="malayalam">മലയാളം | Malayalam</option>
+                                    <option value="english">English</option>
+                                </select>
+                            </div>
+                            <div className="modal-buttons">
+                                <button type="button" className="btn-secondary" onClick={onClose}>
+                                    Cancel
+                                </button>
+                                <button type="submit" className="btn-primary">
+                                    Register
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+
+        // Main App Component
+        const FarmerAdvisoryApp = () => {
+            const [farmer, setFarmer] = useState(null);
+            const [showRegistration, setShowRegistration] = useState(false);
+            const [language, setLanguage] = useState('malayalam');
+            const [messages, setMessages] = useState([]);
+            const [query, setQuery] = useState('');
+            const [loading, setLoading] = useState(false);
+            const [isListening, setIsListening] = useState(false);
+            const [weather, setWeather] = useState(null);
+            const [marketPrices, setMarketPrices] = useState(null);
+            
+            const messagesEndRef = useRef(null);
+
+            // Check for existing farmer on load
+            useEffect(() => {
+                const savedFarmer = localStorage.getItem('farmer');
+                if (savedFarmer) {
+                    setFarmer(JSON.parse(savedFarmer));
+                } else {
+                    setShowRegistration(true);
+                }
+            }, []);
+
+            // Socket connection
+            useEffect(() => {
+                if (farmer) {
+                    socket.emit('join_farmer', farmer._id);
+                    
+                    socket.on('new_response', (data) => {
+                        console.log('Real-time response received:', data);
+                    });
+                }
+
+                return () => {
+                    socket.off('new_response');
+                };
+            }, [farmer]);
+
+            // Auto scroll to bottom
+            useEffect(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }, [messages]);
+
+            // Load weather and market data
+            useEffect(() => {
+                if (farmer) {
+                    loadWeatherData();
+                    loadMarketPrices();
+                }
+            }, [farmer]);
+
+            const loadWeatherData = async () => {
+                if (!farmer) return;
+                try {
+                    const response = await axios.get(`${API_BASE_URL}/weather/${farmer.location}`);
+                    if (response.data.success) {
+                        setWeather(response.data.weather);
+                    }
+                } catch (error) {
+                    console.error('Weather loading error:', error);
+                }
+            };
+
+            const loadMarketPrices = async () => {
+                if (!farmer || !farmer.cropType) return;
+                try {
+                    const response = await axios.get(`${API_BASE_URL}/market-prices/${farmer.cropType[0] || 'rice'}`);
+                    if (response.data.success) {
+                        setMarketPrices(response.data.priceInfo);
+                    }
+                } catch (error) {
+                    console.error('Market prices loading error:', error);
+                }
+            };
+
+            const handleRegistration = async (formData) => {
+                try {
+                    const response = await axios.post(`${API_BASE_URL}/farmers/register`, {
+                        ...formData,
+                        cropType: formData.cropType ? [formData.cropType] : []
+                    });
+                    
+                    if (response.data.success) {
+                        setFarmer(response.data.farmer);
+                        localStorage.setItem('farmer', JSON.stringify(response.data.farmer));
+                        setShowRegistration(false);
+                        setLanguage(response.data.farmer.preferredLanguage);
+                        
+                        // Welcome message
+                        const welcomeMessage = language === 'malayalam' 
+                            ? `നമസ്കാരം ${response.data.farmer.name}! നിങ്ങളുടെ കൃഷിയുമായി ബന്ധപ്പെട്ട എന്തെങ്കിലും സംശയങ്ങൾ ചോദിക്കാം.`
+                            : `Welcome ${response.data.farmer.name}! You can ask any farming related questions.`;
+                        
+                        setMessages([{
+                            type: 'ai',
+                            content: welcomeMessage,
+                            timestamp: new Date()
+                        }]);
+                    }
+                } catch (error) {
+                    alert('Registration failed. Please try again.');
+                    console.error('Registration error:', error);
+                }
+            };
+
+            const handleSendQuery = async () => {
+                if (!query.trim() || !farmer || loading) return;
+
+                const userMessage = {
+                    type: 'user',
+                    content: query,
+                    timestamp: new Date()
+                };
+
+                setMessages(prev => [...prev, userMessage]);
+                setLoading(true);
+                
+                const currentQuery = query;
+                setQuery('');
+
+                try {
+                    const response = await axios.post(`${API_BASE_URL}/query`, {
+                        farmerId: farmer._id,
+                        query: currentQuery,
+                        language: language
+                    });
+
+                    if (response.data.success) {
+                        const aiMessage = {
+                            type: 'ai',
+                            content: response.data.response,
+                            category: response.data.category,
+                            confidence: response.data.confidence,
+                            timestamp: new Date(response.data.timestamp)
+                        };
+
+                        setMessages(prev => [...prev, aiMessage]);
+                    }
+                } catch (error) {
+                    const errorMessage = {
+                        type: 'ai',
+                        content: language === 'malayalam' 
+                            ? 'ക്ഷമിക്കണം, ഒരു പിശക് സംഭവിച്ചു. വീണ്ടും ശ്രമിക്കുക.'
+                            : 'Sorry, an error occurred. Please try again.',
+                        timestamp: new Date()
+                    };
+                    setMessages(prev => [...prev, errorMessage]);
+                    console.error('Query error:', error);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const handleVoiceInput = () => {
+                if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                    alert(language === 'malayalam' 
+                        ? 'നിങ്ങളുടെ ബ്രൗസർ സ്പീച്ച് റെക്കഗ്നിഷൻ പിന്തുണയ്ക്കുന്നില്ല'
+                        : 'Your browser does not support speech recognition');
+                    return;
+                }
+
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                const recognition = new SpeechRecognition();
+
+                recognition.lang = language === 'malayalam' ? 'ml-IN' : 'en-IN';
+                recognition.continuous = false;
+                recognition.interimResults = false;
+
+                recognition.onstart = () => {
+                    setIsListening(true);
+                };
+
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    setQuery(transcript);
+                };
+
+                recognition.onend = () => {
+                    setIsListening(false);
+                };
+
+                recognition.onerror = (event) => {
+                    console.error('Speech recognition error:', event.error);
+                    setIsListening(false);
+                };
+
+                recognition.start();
+            };
+
+            const handleQuickAction = (action) => {
+                const quickQueries = {
+                    malayalam: {
+                        pest: 'എന്റെ വിളയിൽ കീടങ്ങളുണ്ട്, എന്ത് ചെയ്യണം?',
+                        weather: 'ഇന്നത്തെ കാലാവസ്ഥ എങ്ങനെയാണ്?',
+                        fertilizer: 'എപ്പോൾ വളം ഇടണം?',
+                        irrigation: 'എത്ര വെള്ളം വേണം?'
+                    },
+                    english: {
+                        pest: 'My crops have pest problems, what should I do?',
+                        weather: 'How is today\'s weather?',
+                        fertilizer: 'When should I apply fertilizer?',
+                        irrigation: 'How much water is needed?'
+                    }
+                };
+
+                setQuery(quickQueries[language][action] || '');
+            };
+
+            const formatTime = (date) => {
+                return new Date(date).toLocaleTimeString('en-IN', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+            };
+
+            return (
+                <div className="app-container">
+                    {showRegistration && (
+                        <RegistrationModal
+                            isOpen={showRegistration}
+                            onClose={() => setShowRegistration(false)}
+                            onRegister={handleRegistration}
+                        />
+                    )}
+
+                    <div className="header">
+                        <h1>🌾 കൃഷിക്കാരന്റെ സഹായി</h1>
+                        <p className="subtitle">AI-Powered Farmer Query Support & Advisory System</p>
+                        {farmer && (
+                            <p style={{ marginTop: '10px', color: '#667eea' }}>
+                                Welcome, {farmer.name} | {farmer.location}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="main-content">
+                        <div className="chat-container">
+                            <div className="language-toggle">
+                                <button 
+                                    className={`lang-btn ${language === 'malayalam' ? 'active' : ''}`}
+                                    onClick={() => setLanguage('malayalam')}
+                                >
+                                    മലയാളം
+                                </button>
+                                <button 
+                                    className={`lang-btn ${language === 'english' ? 'active' : ''}`}
+                                    onClick={() => setLanguage('english')}
+                                >
+                                    English
+                                </button>
+                            </div>
+
+                            <div className="messages-container">
+                                {messages.length === 0 && (
+                                    <div style={{ textAlign: 'center', color: '#666', marginTop: '50px' }}>
+                                        <p>
+                                            {language === 'malayalam' 
+                                                ? 'കൃഷിയുമായി ബന്ധപ്പെട്ട നിങ്ങളുടെ സംശയങ്ങൾ ചോദിക്കുക'
+                                                : 'Ask your farming related questions here'
+                                            }
+                                        </p>
+                                    </div>
+                                )}
+                                
+                                {messages.map((message, index) => (
+                                    <div key={index} className={`message ${message.type}`}>
+                                        <div className="message-bubble">
+                                            {message.content}
+                                            {message.category && (
+                                                <div style={{ fontSize: '12px', marginTop: '5px', opacity: 0.7 }}>
+                                                    Category: {message.category}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="message-time">
+                                            {formatTime(message.timestamp)}
+                                        </div>
+                                    </div>
+                                ))}
+                                
+                                {loading && (
+                                    <div className="message ai">
+                                        <div className="message-bubble">
+                                            <div className="loading">
+                                                <div className="spinner"></div>
+                                                {language === 'malayalam' ? 'ഉത്തരം തയ്യാറാക്കുന്നു...' : 'Preparing response...'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                <div ref={messagesEndRef} />
+                            </div>
+
+                            <div className="input-container">
+                                <textarea
+                                    className="query-input"
+                                    value={query}
+                                    onChange={(e) => setQuery(e.target.value)}
+                                    placeholder={language === 'malayalam' 
+                                        ? 'നിങ്ങളുടെ ചോദ്യം ഇവിടെ ടൈപ്പ് ചെയ്യുക...'
+                                        : 'Type your question here...'
+                                    }
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            handleSendQuery();
+                                        }
+                                    }}
+                                />
+                                <button
+                                    className={`voice-btn ${isListening ? 'listening' : ''}`}
+                                    onClick={handleVoiceInput}
+                                    title={language === 'malayalam' ? 'വോയ്സ് ഇൻപുട്ട്' : 'Voice Input'}
+                                >
+                                    🎤
+                                </button>
+                                <button
+                                    className="send-btn"
+                                    onClick={handleSendQuery}
+                                    disabled={!query.trim() || loading}
+                                >
+                                    {loading ? '...' : '📤'}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="sidebar">
+                            <h3>
+                                {language === 'malayalam' ? 'വേഗത്തിലുള്ള സഹായം' : 'Quick Help'}
+                            </h3>
+                            <div className="quick-actions">
+                                <button 
+                                    className="quick-btn"
+                                    onClick={() => handleQuickAction('pest')}
+                                >
+                                    🐛 {language === 'malayalam' ? 'കീടനിയന്ത്രണം' : 'Pest Control'}
+                                </button>
+                                <button 
+                                    className="quick-btn"
+                                    onClick={() => handleQuickAction('weather')}
+                                >
+                                    🌤️ {language === 'malayalam' ? 'കാലാവസ്ഥ' : 'Weather'}
+                                </button>
+                                <button 
+                                    className="quick-btn"
+                                    onClick={() => handleQuickAction('fertilizer')}
+                                >
+                                    🌱 {language === 'malayalam' ? 'വളപ്രയോഗം' : 'Fertilization'}
+                                </button>
+                                <button 
+                                    className="quick-btn"
+                                    onClick={() => handleQuickAction('irrigation')}
+                                >
+                                    💧 {language === 'malayalam' ? 'ജലസേചനം' : 'Irrigation'}
+                                </button>
+                            </div>
+
+                            {weather && (
+                                <div className="weather-card">
+                                    <h4>{language === 'malayalam' ? 'കാലാവസ്ഥ റിപ്പോർട്ട്' : 'Weather Report'}</h4>
+                                    <p><strong>🌡️:</strong> {weather.temperature}</p>
+                                    <p><strong>💧:</strong> {weather.humidity}</p>
+                                    <p><strong>🌧️:</strong> {weather.rainfall}</p>
+                                    <small>{weather.advisory}</small>
+                                </div>
+                            )}
+
+                            {marketPrices && (
+                                <div className="price-card">
+                                    <h4>{language === 'malayalam' ? 'മാർക്കറ്റ് വില' : 'Market Price'}</h4>
+                                    <p><strong>💰:</strong> {marketPrices.price}</p>
+                                    <p><strong>📍:</strong> {marketPrices.market}</p>
+                                    <p><strong>📈:</strong> {marketPrices.trend}</p>
+                                </div>
+                            )}
+
+                            <div style={{ marginTop: '20px', fontSize: '12px', color: '#666' }}>
+                                <p>
+                                    {language === 'malayalam' 
+                                        ? '24x7 സഹായം ലഭ്യം'
+                                        : '24x7 Support Available'
+                                    }
+                                </p>
+                                <p>📞 Kerala Agriculture: 0471-2305670</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Render the app
+        ReactDOM.render(<FarmerAdvisoryApp />, document.getElementById('root'));
+    </script>
+</body>
+</html>
